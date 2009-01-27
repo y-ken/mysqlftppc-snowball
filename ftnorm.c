@@ -1,6 +1,8 @@
+#if HAVE_ICU
 #include <my_global.h>
 #include <my_sys.h>
-#if HAVE_ICU
+#include <m_string.h>
+
 #include <unicode/unorm.h>
 #include <unicode/ustring.h>
 
@@ -35,7 +37,7 @@ size_t uni_normalize(char* src, size_t src_len, char* dst, size_t dst_capacity, 
     s = u_strFromUTF8(s, s_alloc, NULL, src, (int32_t)src_len, &ustatus);
     if(U_FAILURE(ustatus)){
 			ustatus = 0;
-			s_alloc = u_strFromUTF8(NULL, 0, NULL, src, (int32_t)src_len, &ustatus) + 4; // prefill
+			s_alloc = (size_t)u_strFromUTF8(NULL, 0, NULL, src, (int32_t)src_len, &ustatus) + 4; // prefill
       tmp = (UChar*)my_realloc(s, s_alloc, MYF(MY_WME));
       if(!tmp){
 				my_free(s, MYF(0));
@@ -74,7 +76,7 @@ size_t uni_normalize(char* src, size_t src_len, char* dst, size_t dst_capacity, 
     u_strToUTF8(dst, (int32_t)dst_capacity, NULL, d, d_len, &ustatus);
     my_free(d, MYF(0));
     if(ustatus == U_BUFFER_OVERFLOW_ERROR){
-			return 0;
+			return (size_t)u_strToUTF8(NULL, 0, NULL, d, d_len, &ustatus);
     }
 		return strlen(dst);
 }

@@ -52,8 +52,8 @@ static LIST* list_top(LIST* root){
 }
 
 struct ftppc_mem_bulk {
-  void*  mem_head;
-  void*  mem_cur;
+  char*  mem_head;
+  char*  mem_cur;
   size_t mem_size;
 };
 
@@ -248,7 +248,7 @@ static int snowball_add_word(MYSQL_FTPARSER_PARAM *param, FTSTRING *pbuffer, MYS
 	struct ftppc_state *state = (struct ftppc_state*)param->ftparser_state;
 	
 	struct sb_stemmer *st = (struct sb_stemmer*)(state->engine);
-	const sb_symbol * sym = sb_stemmer_stem(st, thead, tlen);
+	const sb_symbol * sym = sb_stemmer_stem(st, (const sb_symbol*)thead, tlen);
 	int sym_len = sb_stemmer_length(st);
 	
 	if(!sym){
