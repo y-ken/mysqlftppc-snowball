@@ -9,3 +9,5 @@ clean:
 	rm -f stemwords *.o src_c/*.o runtime/*.o libstemmer/*.o
 .c.o:
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ -c $<
+install:
+	
