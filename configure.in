@@ -2,6 +2,7 @@ AC_INIT(plugin_snowball, 1.6)
 AM_INIT_AUTOMAKE
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
+AM_PROG_CC_C_O
 
 AC_ARG_WITH([mysql-config],
  [AS_HELP_STRING([--with-mysql-config],[compile for specified mysql])],
@@ -26,6 +27,6 @@ AS_IF(
   AC_MSG_RESULT(yes)],
  [AC_MSG_RESULT(no. icu-config not found. Please specify --with-icu-config.)])
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile libstemmer_c/Makefile])
 AC_OUTPUT
 
