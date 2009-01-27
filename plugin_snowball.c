@@ -101,7 +101,7 @@ static void* ftppc_alloc(struct ftppc_state *state, size_t length){
 
 
 static int snowball_parser_plugin_init(void *arg __attribute__((unused))){
-	snowball_info[0] = '\0';
+  snowball_info[0] = '\0';
 #if HAVE_ICU
   char icu_tmp_str[16];
   char errstr[128];
@@ -141,58 +141,15 @@ static int snowball_parser_init(MYSQL_FTPARSER_PARAM *param __attribute__((unuse
     return(FTPPC_MEMORY_ERROR);
   }
   *state = tmp;
-	
-	char *algorithm = "english";
-	if(snowball_algorithm && strlen(snowball_algorithm) > 0){
-		algorithm = snowball_algorithm;
-	}
-	
-	struct sb_stemmer *st = NULL;
-	CHARSET_INFO *cs;
-	if(strcmp(param->cs->csname, "utf8")==0){
-		cs = get_charset(83, MYF(0)); // cs (utf8_bin) can't be null.
-		st = sb_stemmer_new(algorithm, "UTF_8");
-		if(st){
-			state->engine = st;
-			state->engine_charset = cs;
-		}
-	}else if(strcmp(param->cs->csname, "latin1")==0){
-		cs = get_charset(47, MYF(0)); // cs (latin1_bin) can't be null.
-		st = sb_stemmer_new(algorithm, "ISO_8858_1");
-		if(st){
-			state->engine = st;
-			state->engine_charset = cs;
-		}
-	}else if(strcmp(param->cs->csname, "cp850")==0){
-		cs = get_charset(80, MYF(0)); // cs (cp850_bin) can't be null.
-		st = sb_stemmer_new(algorithm, "CP850");
-		if(st){
-			state->engine = st;
-			state->engine_charset = cs;
-		}
-	}else if(strcmp(param->cs->csname, "koi8r")==0){
-		cs = get_charset(74, MYF(0)); // cs (koi8r_bin) can't be null.
-		st = sb_stemmer_new(algorithm, "KOI8_R");
-		if(st){
-			state->engine = st;
-			state->engine_charset = cs;
-		}
-	}
-	if(!st){ // if engine was not available, we'll transcode.
-		cs = get_charset(83, MYF(0)); // cs (utf8_bin) can't be null.
-		st = sb_stemmer_new(algorithm, "UTF_8"); // st can't be NULL because update function will check it.
-		state->engine = st;
-		state->engine_charset = cs;
-	}
-	
   param->ftparser_state = state;
-	
+  
   return(0);
 }
 static int snowball_parser_deinit(MYSQL_FTPARSER_PARAM *param __attribute__((unused))){
-	struct ftppc_state *state = (struct ftppc_state*)param->ftparser_state;
-	sb_stemmer_delete((struct sb_stemmer *)state->engine);
+  struct ftppc_state *state = (struct ftppc_state*)param->ftparser_state;
+  sb_stemmer_delete((struct sb_stemmer *)state->engine);
   list_free(state->mem_root, 1);
+  my_free(state, MYF(0));
   return(0);
 }
 
@@ -237,41 +194,41 @@ static size_t str_convert(CHARSET_INFO *cs, char *from, size_t from_length,
 }
 
 static int snowball_add_word(MYSQL_FTPARSER_PARAM *param, FTSTRING *pbuffer, MYSQL_FTPARSER_BOOLEAN_INFO* instinfo){
-	DBUG_ENTER("snowball_add_word");
-	
-	size_t tlen = ftstring_length(pbuffer);
-	if(tlen==0){
-		DBUG_RETURN(0);
-	}
-	char* thead = ftstring_head(pbuffer);
-	
-	struct ftppc_state *state = (struct ftppc_state*)param->ftparser_state;
-	
-	struct sb_stemmer *st = (struct sb_stemmer*)(state->engine);
-	const sb_symbol * sym = sb_stemmer_stem(st, (const sb_symbol*)thead, tlen);
-	int sym_len = sb_stemmer_length(st);
-	
-	if(!sym){
-		// stemming failed.
-		DBUG_RETURN(0);
-	}
-	
-	if(strcmp(state->engine_charset->csname, param->cs->csname) != 0){
-		tlen = str_convert(state->engine_charset, (char*)sym, (size_t)sym_len, param->cs, NULL, 0, NULL);
-		thead = (char*)ftppc_alloc(state, tlen);
-		if(!thead){
-			DBUG_RETURN(FTPPC_MEMORY_ERROR);
-		}
-		str_convert(state->engine_charset, (char*)sym, (size_t)sym_len, param->cs, thead, tlen, NULL);
-	}else{
-		tlen = (size_t)sym_len;
-		thead = (char*)ftppc_alloc(state, tlen);
-		if(!thead){
-			DBUG_RETURN(FTPPC_MEMORY_ERROR);
-		}
-		memcpy(thead, (char*)sym, tlen);
-	}
-	DBUG_RETURN(param->mysql_parse(param, thead, tlen));
+  DBUG_ENTER("snowball_add_word");
+  
+  size_t tlen = ftstring_length(pbuffer);
+  if(tlen==0){
+    DBUG_RETURN(0);
+  }
+  char* thead = ftstring_head(pbuffer);
+  
+  struct ftppc_state *state = (struct ftppc_state*)param->ftparser_state;
+  
+  struct sb_stemmer *st = (struct sb_stemmer*)(state->engine);
+  const sb_symbol * sym = sb_stemmer_stem(st, (const sb_symbol*)thead, tlen);
+  int sym_len = sb_stemmer_length(st);
+  
+  if(!sym){
+    // stemming failed.
+    DBUG_RETURN(0);
+  }
+  
+  if(strcmp(state->engine_charset->csname, param->cs->csname) != 0){
+    tlen = str_convert(state->engine_charset, (char*)sym, (size_t)sym_len, param->cs, NULL, 0, NULL);
+    thead = ftppc_alloc(state, tlen);
+    if(!thead){
+      DBUG_RETURN(FTPPC_MEMORY_ERROR);
+    }
+    str_convert(state->engine_charset, (char*)sym, (size_t)sym_len, param->cs, thead, tlen, NULL);
+  }else{
+    tlen = (size_t)sym_len;
+    thead = ftppc_alloc(state, tlen);
+    if(!thead){
+      DBUG_RETURN(FTPPC_MEMORY_ERROR);
+    }
+    memcpy(thead, (char*)sym, tlen);
+  }
+  DBUG_RETURN(param->mysql_parse(param, thead, tlen));
 }
 
 static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
@@ -282,22 +239,22 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
   size_t feed_length = (size_t)param->length;
   int feed_req_free = 0;
   CHARSET_INFO *cs = param->cs; // the charset of feed
-	
+  
 #if HAVE_ICU
   // normalize.
   if(snowball_unicode_normalize && strcmp(snowball_unicode_normalize, "OFF")!=0){
-		if(strcmp(cs->csname, "utf8")!=0){
-			// convert into UTF-8
-		  CHARSET_INFO *uc = get_charset(33,MYF(0)); // my_charset_utf8_general_ci for utf8 conversion
-	    // calculate mblen and malloc.
-//	    size_t cv_length = uc->mbmaxlen * cs->cset->numchars(cs, feed, feed+feed_length);
-			size_t cv_length = str_convert(cs, feed, feed_length, uc, NULL, 0, NULL);
-	    char* cv = my_malloc(cv_length, MYF(MY_WME));
-	    feed_length = str_convert(cs, feed, feed_length, uc, cv, cv_length, NULL);
-	    feed = cv;
-	    feed_req_free = 1;
-			cs = uc;
-	  }
+    if(strcmp(cs->csname, "utf8")!=0){
+      // convert into UTF-8
+      CHARSET_INFO *uc = get_charset(33,MYF(0)); // my_charset_utf8_general_ci for utf8 conversion
+      // calculate mblen and malloc.
+//      size_t cv_length = uc->mbmaxlen * cs->cset->numchars(cs, feed, feed+feed_length);
+      size_t cv_length = str_convert(cs, feed, feed_length, uc, NULL, 0, NULL);
+      char* cv = my_malloc(cv_length, MYF(MY_WME));
+      feed_length = str_convert(cs, feed, feed_length, uc, cv, cv_length, NULL);
+      feed = cv;
+      feed_req_free = 1;
+      cs = uc;
+    }
     char* nm;
     char* t;
     size_t nm_length=0;
@@ -349,43 +306,92 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
   }
 #endif
   
-	struct ftppc_state *state = (struct ftppc_state*)param->ftparser_state;
-	if(strcmp(cs->csname, state->engine_charset->csname)!=0){
-		size_t tmp_len = str_convert(cs, feed, feed_length, state->engine_charset, NULL, 0, NULL);
-		char* tmp = my_malloc(tmp_len, MYF(MY_WME));
-		if(!tmp){
-			DBUG_RETURN(FTPPC_MEMORY_ERROR);
-		}
-		str_convert(cs, feed, feed_length, state->engine_charset, tmp, tmp_len, NULL);
-		if(feed_req_free){ my_free(feed, MYF(0)); }
-		feed = tmp;
-		feed_length = tmp_len;
-		feed_req_free = 1;
-		cs = state->engine_charset;
-	}
-	
+  struct ftppc_state *state = (struct ftppc_state*)param->ftparser_state;
+  // init engine >>
+  if(!state->engine){
+    char *algorithm = "english";
+    if(snowball_algorithm && strlen(snowball_algorithm) > 0){
+      algorithm = snowball_algorithm;
+    }
+    
+    struct sb_stemmer *st = NULL;
+    CHARSET_INFO *cs;
+    if(strcmp(param->cs->csname, "utf8")==0){
+      cs = get_charset(83, MYF(0)); // cs (utf8_bin) can't be null.
+      st = sb_stemmer_new(algorithm, "UTF_8");
+      if(st){
+        state->engine = st;
+        state->engine_charset = cs;
+      }
+    }else if(strcmp(param->cs->csname, "latin1")==0){
+      cs = get_charset(47, MYF(0)); // cs (latin1_bin) can't be null.
+      st = sb_stemmer_new(algorithm, "ISO_8858_1");
+      if(st){
+        state->engine = st;
+        state->engine_charset = cs;
+      }
+    }else if(strcmp(param->cs->csname, "cp850")==0){
+      cs = get_charset(80, MYF(0)); // cs (cp850_bin) can't be null.
+      st = sb_stemmer_new(algorithm, "CP850");
+      if(st){
+        state->engine = st;
+        state->engine_charset = cs;
+      }
+    }else if(strcmp(param->cs->csname, "koi8r")==0){
+      cs = get_charset(74, MYF(0)); // cs (koi8r_bin) can't be null.
+      st = sb_stemmer_new(algorithm, "KOI8_R");
+      if(st){
+        state->engine = st;
+        state->engine_charset = cs;
+      }
+    }
+    if(!st){ // if engine was not available, we'll transcode.
+      cs = get_charset(83, MYF(0)); // cs (utf8_bin) can't be null.
+      st = sb_stemmer_new(algorithm, "UTF_8"); // st can't be NULL because update function will check it.
+      state->engine = st;
+      state->engine_charset = cs;
+    }
+  }
+  // init engine <<
+  if(strcmp(cs->csname, state->engine_charset->csname)!=0){
+    size_t tmp_len = str_convert(cs, feed, feed_length, state->engine_charset, NULL, 0, NULL);
+    char* tmp = my_malloc(tmp_len, MYF(MY_WME));
+    if(!tmp){
+      DBUG_RETURN(FTPPC_MEMORY_ERROR);
+    }
+    str_convert(cs, feed, feed_length, state->engine_charset, tmp, tmp_len, NULL);
+    if(feed_req_free){ my_free(feed, MYF(0)); }
+    feed = tmp;
+    feed_length = tmp_len;
+    feed_req_free = 1;
+    cs = state->engine_charset;
+  }
+  
   FTSTRING buffer = { NULL, 0, NULL, 0, 0 };
   FTSTRING *pbuffer = &buffer;
   ftstring_bind(pbuffer, feed, feed_req_free);
-	
-  if(param->mode == MYSQL_FTPARSER_FULL_BOOLEAN_INFO){
-	  MYSQL_FTPARSER_BOOLEAN_INFO instinfo ={ FT_TOKEN_WORD, 0, 0, 0, 0, ' ', 0 };
-		MYSQL_FTPARSER_BOOLEAN_INFO *info_may = (MYSQL_FTPARSER_BOOLEAN_INFO*)my_malloc(sizeof(MYSQL_FTPARSER_BOOLEAN_INFO), MYF(MY_WME));
-	  if(!info_may){
-	    DBUG_RETURN(FTPPC_MEMORY_ERROR);
-	  }
-		*info_may = instinfo;
-		LIST *infos = NULL;
-		list_push(infos, info_may);
-		
+  
+//  if(param->mode == MYSQL_FTPARSER_FULL_BOOLEAN_INFO){
+    MYSQL_FTPARSER_BOOLEAN_INFO instinfo ={ FT_TOKEN_WORD, 0, 0, 0, 0, ' ', 0 };
+    MYSQL_FTPARSER_BOOLEAN_INFO *info_may = (MYSQL_FTPARSER_BOOLEAN_INFO*)my_malloc(sizeof(MYSQL_FTPARSER_BOOLEAN_INFO), MYF(MY_WME));
+    if(!info_may){
+      DBUG_RETURN(FTPPC_MEMORY_ERROR);
+    }
+    *info_may = instinfo;
+    LIST *infos = NULL;
+    list_push(infos, info_may);
+    
     int context=CTX_CONTROL;
     SEQFLOW sf,sf_prev = SF_BROKEN;
     char* pos = feed;
-		char* docend = feed+feed_length;
+    char* docend = feed+feed_length;
     while(pos < docend){
       int readsize;
       my_wc_t dst;
       sf = ctxscan(cs, pos, docend, &dst, &readsize, context);
+      if(param->mode != MYSQL_FTPARSER_FULL_BOOLEAN_INFO && sf!=SF_WHITE){
+        sf=SF_CHAR;
+      }
       if(sf==SF_ESCAPE){
         context |= CTX_ESCAPE;
         context |= CTX_CONTROL;
@@ -396,64 +402,64 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
         }else{
           context |= CTX_CONTROL;
         }
-			}
-	    if(context & CTX_QUOTE){
-	      if(my_isspace(param->cs, *pos) && sf_prev!=SF_ESCAPE){ // perform phrase query.
-	        sf = SF_WHITE;
-	      }
-	    }
-	    if(sf == SF_PLUS){   instinfo.yesno = 1; }
-	    if(sf == SF_MINUS){  instinfo.yesno = -1; }
-	    if(sf == SF_STRONG){ instinfo.weight_adjust++; }
-	    if(sf == SF_WEAK){   instinfo.weight_adjust--; }
-	    if(sf == SF_WASIGN){ instinfo.wasign = !instinfo.wasign; }
-	    if(sf == SF_LEFT_PAREN){
-	      MYSQL_FTPARSER_BOOLEAN_INFO *tmp = (MYSQL_FTPARSER_BOOLEAN_INFO*)my_malloc(sizeof(MYSQL_FTPARSER_BOOLEAN_INFO), MYF(MY_WME));
-	      if(!tmp){
-	        list_free(infos, 1);
-	        ftstring_destroy(pbuffer);
-	        DBUG_RETURN(FTPPC_MEMORY_ERROR);
-	      }
-	      *tmp = instinfo;
-	      list_push(infos, tmp);
-      	
-	      instinfo.type = FT_TOKEN_LEFT_PAREN;
-	      param->mysql_add_word(param, pos, 0, &instinfo); // push LEFT_PAREN token
-	      instinfo = *tmp;
-	    }
-	    if(sf == SF_QUOTE_START){
-	      context |= CTX_QUOTE;
-	    }
-	    if(sf == SF_RIGHT_PAREN){
-	      instinfo = *((MYSQL_FTPARSER_BOOLEAN_INFO*)infos->data);
-	      instinfo.type = FT_TOKEN_RIGHT_PAREN;
-	      param->mysql_add_word(param, pos, 0, &instinfo); // push RIGHT_PAREN token
-      	
-	      MYSQL_FTPARSER_BOOLEAN_INFO *tmp = (MYSQL_FTPARSER_BOOLEAN_INFO*)infos->data;
-	      if(tmp){ my_free(tmp, MYF(0)); }
-	      list_pop(infos);
-	      if(!infos){
-	        DBUG_RETURN(FTPPC_SYNTAX_ERROR);
-	      } // must not reach the base info_may level.
-	      instinfo = *((MYSQL_FTPARSER_BOOLEAN_INFO*)infos->data);
-	    }
-	    if(sf == SF_QUOTE_END){
-	      context &= ~CTX_QUOTE;
-	    }
-	    if(sf == SF_CHAR){
-	      if(ftstring_length(pbuffer)==0){
-	        ftstring_bind(pbuffer, pos, feed_req_free);
-	      }
-	      ftstring_append(pbuffer, pos, readsize);
-	    }else if(sf != SF_ESCAPE){
-				if(sf == SF_TRUNC){
+      }
+      if(context & CTX_QUOTE){
+        if(my_isspace(param->cs, *pos) && sf_prev!=SF_ESCAPE){ // perform phrase query.
+          sf = SF_WHITE;
+        }
+      }
+      if(sf == SF_PLUS){   instinfo.yesno = 1; }
+      if(sf == SF_MINUS){  instinfo.yesno = -1; }
+      if(sf == SF_STRONG){ instinfo.weight_adjust++; }
+      if(sf == SF_WEAK){   instinfo.weight_adjust--; }
+      if(sf == SF_WASIGN){ instinfo.wasign = !instinfo.wasign; }
+      if(sf == SF_LEFT_PAREN){
+        MYSQL_FTPARSER_BOOLEAN_INFO *tmp = (MYSQL_FTPARSER_BOOLEAN_INFO*)my_malloc(sizeof(MYSQL_FTPARSER_BOOLEAN_INFO), MYF(MY_WME));
+        if(!tmp){
+          list_free(infos, 1);
+          ftstring_destroy(pbuffer);
+          DBUG_RETURN(FTPPC_MEMORY_ERROR);
+        }
+        *tmp = instinfo;
+        list_push(infos, tmp);
+        
+        instinfo.type = FT_TOKEN_LEFT_PAREN;
+        param->mysql_add_word(param, pos, 0, &instinfo); // push LEFT_PAREN token
+        instinfo = *tmp;
+      }
+      if(sf == SF_QUOTE_START){
+        context |= CTX_QUOTE;
+      }
+      if(sf == SF_RIGHT_PAREN){
+        instinfo = *((MYSQL_FTPARSER_BOOLEAN_INFO*)infos->data);
+        instinfo.type = FT_TOKEN_RIGHT_PAREN;
+        param->mysql_add_word(param, pos, 0, &instinfo); // push RIGHT_PAREN token
+        
+        MYSQL_FTPARSER_BOOLEAN_INFO *tmp = (MYSQL_FTPARSER_BOOLEAN_INFO*)infos->data;
+        if(tmp){ my_free(tmp, MYF(0)); }
+        list_pop(infos);
+        if(!infos){
+          DBUG_RETURN(FTPPC_SYNTAX_ERROR);
+        } // must not reach the base info_may level.
+        instinfo = *((MYSQL_FTPARSER_BOOLEAN_INFO*)infos->data);
+      }
+      if(sf == SF_QUOTE_END){
+        context &= ~CTX_QUOTE;
+      }
+      if(sf == SF_CHAR){
+        if(ftstring_length(pbuffer)==0){
+          ftstring_bind(pbuffer, pos, feed_req_free);
+        }
+        ftstring_append(pbuffer, pos, readsize);
+      }else if(sf != SF_ESCAPE){
+        if(sf == SF_TRUNC){
           instinfo.trunc = 1;
-				}
-		    snowball_add_word(param, pbuffer, &instinfo);
-	      ftstring_reset(pbuffer);
+        }
+        snowball_add_word(param, pbuffer, &instinfo);
+        ftstring_reset(pbuffer);
         instinfo = *((MYSQL_FTPARSER_BOOLEAN_INFO *)infos->data);
-			}
-			
+      }
+      
       if(readsize > 0){
         pos += readsize;
       }else if(readsize == MY_CS_ILSEQ){
@@ -468,12 +474,12 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
         snowball_add_word(param, pbuffer, &instinfo);
       }
     }
-		list_free(infos,1);
-  }else{
-    ftstring_append(pbuffer, feed, feed_length);
-    snowball_add_word(param, pbuffer, NULL);
-  }
-	ftstring_destroy(pbuffer);
+    list_free(infos,1);
+//   }else{
+//     ftstring_append(pbuffer, feed, feed_length);
+//     snowball_add_word(param, pbuffer, NULL);
+//  }
+  ftstring_destroy(pbuffer);
   if(feed_req_free){ my_free(feed, MYF(0)); }
   DBUG_RETURN(0);
 }
@@ -486,13 +492,13 @@ int snowball_algorithm_check(MYSQL_THD thd, struct st_mysql_sys_var *var, void *
     str = value->val_str(value,buf,&len);
     if(!str) return -1;
     *(const char**)save=str;
-		
-		// we want to use alias names, we don't use sb_stemmer_list().
-		struct sb_stemmer *st = sb_stemmer_new(str, NULL);
-		if(st){
-			sb_stemmer_delete(st);
-			return 0;
-		}
+    
+    // we want to use alias names, we don't use sb_stemmer_list().
+    struct sb_stemmer *st = sb_stemmer_new(str, NULL);
+    if(st){
+      sb_stemmer_delete(st);
+      return 0;
+    }
     return -1;
 }
 
@@ -559,7 +565,7 @@ static struct st_mysql_show_var snowball_status[]=
 };
 
 static struct st_mysql_sys_var* snowball_system_variables[]= {
-	MYSQL_SYSVAR(algorithm),
+  MYSQL_SYSVAR(algorithm),
 #if HAVE_ICU
   MYSQL_SYSVAR(normalization),
   MYSQL_SYSVAR(unicode_version),
