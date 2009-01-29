@@ -490,6 +490,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
     char *s = feed;
     char *e = feed + feed_length;
     while(s < e){
+			int readsize;
       if(iswchar(cs, s, e, &readsize)){
         if(ftstring_length(pbuffer) == 0){
           ftstring_bind(pbuffer, s, feed_req_free);
