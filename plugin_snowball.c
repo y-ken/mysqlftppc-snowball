@@ -156,7 +156,7 @@ static int snowball_parser_deinit(MYSQL_FTPARSER_PARAM *param __attribute__((unu
 static int iswchar(CHARSET_INFO *cs, char *doc, char *end, int *readsize){
   my_wc_t wc;
   int ctype;
-  *readsize = cs->cset->ctype(cs, &ctype, doc, end);
+  *readsize = cs->cset->ctype(cs, &ctype, (uchar*)doc, (uchar*)end);
   if(ctype & (_MY_U | _MY_L | _MY_NMR)){
     return 1;
   }
@@ -575,7 +575,7 @@ int snowball_unicode_normalize_check(MYSQL_THD thd, struct st_mysql_sys_var *var
 static MYSQL_SYSVAR_STR(algorithm, snowball_algorithm,
   PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_MEMALLOC,
   "Set stemming algorithm by ISO 639 codes.",
-  snowball_algorithm_check, NULL, "en");
+  snowball_algorithm_check, NULL, "english");
 
 static MYSQL_SYSVAR_STR(normalization, snowball_unicode_normalize,
   PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_MEMALLOC,
@@ -589,7 +589,7 @@ static MYSQL_SYSVAR_STR(unicode_version, snowball_unicode_version,
 
 static struct st_mysql_show_var snowball_status[]=
 {
-  {"snowball_info", (char *)snowball_info, SHOW_CHAR},
+  {"Snowball_info", (char *)snowball_info, SHOW_CHAR},
   {0,0,0}
 };
 
