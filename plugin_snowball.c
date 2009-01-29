@@ -490,7 +490,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
     char *s = feed;
     char *e = feed + feed_length;
     while(s < e){
-			int readsize;
+      int readsize;
       if(iswchar(cs, s, e, &readsize)){
         if(ftstring_length(pbuffer) == 0){
           ftstring_bind(pbuffer, s, feed_req_free);
@@ -504,6 +504,9 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
       }
       s += readsize;
     }
+  }
+  if(ftstring_length(pbuffer) > 0){
+    snowball_add_word(param, pbuffer, NULL);
   }
   ftstring_destroy(pbuffer);
   if(feed_req_free){ my_free(feed, MYF(0)); }
