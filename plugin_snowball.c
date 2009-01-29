@@ -153,6 +153,20 @@ static int snowball_parser_deinit(MYSQL_FTPARSER_PARAM *param __attribute__((unu
   return(0);
 }
 
+static int iswchar(CHARSET_INFO *cs, char *doc, char *end, int *readsize){
+  my_wc_t wc;
+  int ctype;
+  *readsize = cs->cset->ctype(cs, &ctype, doc, end);
+  if(ctype & (_MY_U | _MY_L | _MY_NMR)){
+    return 1;
+  }
+  cs->cset->mb_wc(cs, &wc, (uchar*)doc, (uchar*)end);
+  if(wc == '_'){ 
+    return 1;
+  }
+  return 0;
+}
+
 static size_t str_convert(CHARSET_INFO *cs, char *from, size_t from_length,
                           CHARSET_INFO *uc, char *to,   size_t to_length,
                           size_t *numchars){
@@ -371,7 +385,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
   FTSTRING *pbuffer = &buffer;
   ftstring_bind(pbuffer, feed, feed_req_free);
   
-//  if(param->mode == MYSQL_FTPARSER_FULL_BOOLEAN_INFO){
+  if(param->mode == MYSQL_FTPARSER_FULL_BOOLEAN_INFO){
     MYSQL_FTPARSER_BOOLEAN_INFO instinfo ={ FT_TOKEN_WORD, 0, 0, 0, 0, ' ', 0 };
     MYSQL_FTPARSER_BOOLEAN_INFO *info_may = (MYSQL_FTPARSER_BOOLEAN_INFO*)my_malloc(sizeof(MYSQL_FTPARSER_BOOLEAN_INFO), MYF(MY_WME));
     if(!info_may){
@@ -389,9 +403,6 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
       int readsize;
       my_wc_t dst;
       sf = ctxscan(cs, pos, docend, &dst, &readsize, context);
-      if(param->mode != MYSQL_FTPARSER_FULL_BOOLEAN_INFO && sf!=SF_WHITE){
-        sf=SF_CHAR;
-      }
       if(sf==SF_ESCAPE){
         context |= CTX_ESCAPE;
         context |= CTX_CONTROL;
@@ -475,10 +486,24 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
       }
     }
     list_free(infos,1);
-//   }else{
-//     ftstring_append(pbuffer, feed, feed_length);
-//     snowball_add_word(param, pbuffer, NULL);
-//  }
+  }else{
+    char *s = feed;
+    char *e = feed + feed_length;
+    while(s < e){
+      if(iswchar(cs, s, e, &readsize)){
+        if(ftstring_length(pbuffer) == 0){
+          ftstring_bind(pbuffer, s, feed_req_free);
+        }
+        ftstring_append(pbuffer, s, readsize);
+      }else{
+        if(ftstring_length(pbuffer) > 0){
+          snowball_add_word(param, pbuffer, NULL);
+          ftstring_reset(pbuffer);
+        }
+      }
+      s += readsize;
+    }
+  }
   ftstring_destroy(pbuffer);
   if(feed_req_free){ my_free(feed, MYF(0)); }
   DBUG_RETURN(0);
