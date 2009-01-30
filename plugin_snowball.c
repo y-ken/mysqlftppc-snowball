@@ -620,7 +620,7 @@ mysql_declare_plugin(ft_snowball)
   PLUGIN_LICENSE_BSD,
   snowball_parser_plugin_init,  /* init function (when loaded)     */
   snowball_parser_plugin_deinit,/* deinit function (when unloaded) */
-  0x0016,                     /* version                         */
+  0x0106,                     /* version                         */
   snowball_status,               /* status variables                */
   snowball_system_variables,     /* system variables                */
   NULL
