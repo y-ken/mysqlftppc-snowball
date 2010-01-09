@@ -27,8 +27,8 @@ static MYSQL_SYSVAR_STR(breaker, snowball_breaker,
 
 static MYSQL_SYSVAR_STR(algorithm, snowball_algorithm,
   PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_MEMALLOC,
-  "Set stemming algorithm by ISO 639 codes.",
-  snowball_algorithm_check, NULL, "english");
+  "Set stemming algorithm by ISO 639 codes, or OFF",
+  snowball_algorithm_check, NULL, "OFF");
 
 static MYSQL_SYSVAR_STR(normalization, snowball_normalization,
   PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_MEMALLOC,

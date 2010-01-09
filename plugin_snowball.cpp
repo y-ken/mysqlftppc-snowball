@@ -117,9 +117,12 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param){
 			reader = breaker;
 		}
 		
-		FtSnowballReader snowball(reader, state->engine, state->engine_charset);
-		reader = &snowball;
-	
+		FtSnowballReader *snowball = NULL;
+		if(state->engine){
+			snowball = new FtSnowballReader(reader, state->engine, state->engine_charset);
+			reader = snowball;
+		}
+		
 #if HAVE_ICU
 		// post-normalizer
 		FtUnicodeNormalizerReader *normReader = NULL;
@@ -186,6 +189,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param){
 		if(normReader){ delete normReader; }
 #endif
 		if(breaker){ delete breaker; }
+		if(snowball){ delete snowball; }
 	}else{
 		FtCharReader *breaker = NULL;
 		if(!snowball_breaker || strcmp(snowball_breaker,"DEFAULT")==0){
@@ -199,9 +203,12 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param){
 			reader = breaker;
 		}
 		
-		FtSnowballReader snowball(reader, state->engine, state->engine_charset);
-		reader = &snowball;
-	
+		FtSnowballReader *snowball = NULL;
+		if(state->engine){
+			snowball = new FtSnowballReader(reader, state->engine, state->engine_charset);
+			reader = snowball;
+		}
+		
 #if HAVE_ICU
 		// post-normalizer
 		FtUnicodeNormalizerReader *normReader = NULL;
@@ -244,6 +251,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param){
 		if(normReader){ delete normReader; }
 #endif
 		if(breaker){ delete breaker; }
+		if(snowball){ delete snowball; }
 	}
 	DBUG_RETURN(0);
 }
@@ -293,6 +301,7 @@ int snowball_algorithm_check(MYSQL_THD thd, struct st_mysql_sys_var *var, void *
 	if(!str) return -1;
 	*(const char**)save=str;
 	
+	if(strcmp(str,"OFF")==0){ return 0; }
 	// we want to use alias names, we don't use sb_stemmer_list().
 	struct sb_stemmer *st = sb_stemmer_new(str, NULL);
 	if(st){
@@ -350,21 +359,26 @@ FtSnowballState::FtSnowballState(CHARSET_INFO *cs){
 	if(snowball_algorithm && strlen(snowball_algorithm) > 0){
 		algorithm = snowball_algorithm;
 	}
-	engine = sb_stemmer_new(algorithm, "UTF_8");
-	engine_charset = get_charset(33, MYF(0)); // utf8_general_ci
-	if(!engine || !engine_charset){
-		if(strcmp(cs->csname, "latin1")==0){
-			engine = sb_stemmer_new(algorithm, "ISO_8859_1");
-			engine_charset = get_charset(8, MYF(0));  // latin1_swedish_ci
-		}else if(strcmp(cs->csname, "latin2")==0){
-			engine = sb_stemmer_new(algorithm, "ISO_8859_2");
-			engine_charset = get_charset(9, MYF(0));  // latin2_general_ci
-		}else if(strcmp(cs->csname, "koi8r")==0){
-			engine = sb_stemmer_new(algorithm, "KOI8_R");
-			engine_charset = get_charset(7, MYF(0));  // koi8r_general_ci
+	if(strcmp(snowball_algorithm,"OFF")==0){
+		engine = NULL;
+		engine_charset = NULL;
+	}else{
+		engine = sb_stemmer_new(algorithm, "UTF_8");
+		engine_charset = get_charset(33, MYF(0)); // utf8_general_ci
+		if(!engine || !engine_charset){
+			if(strcmp(cs->csname, "latin1")==0){
+				engine = sb_stemmer_new(algorithm, "ISO_8859_1");
+				engine_charset = get_charset(8, MYF(0));  // latin1_swedish_ci
+			}else if(strcmp(cs->csname, "latin2")==0){
+				engine = sb_stemmer_new(algorithm, "ISO_8859_2");
+				engine_charset = get_charset(9, MYF(0));  // latin2_general_ci
+			}else if(strcmp(cs->csname, "koi8r")==0){
+				engine = sb_stemmer_new(algorithm, "KOI8_R");
+				engine_charset = get_charset(7, MYF(0));  // koi8r_general_ci
+			}
 		}
+		// XXX: if engine_charset==NULL, ICU converter might be the alternative code page converter.
 	}
-	// XXX: if engine_charset==NULL, ICU converter might be the alternative code page converter.
 	
 	normalization = FT_NORM_OFF;
 	unicode_v32 = false;
