@@ -208,11 +208,9 @@ static size_t str_convert(CHARSET_INFO *cs, char *from, size_t from_length,
 }
 
 static int snowball_add_word(MYSQL_FTPARSER_PARAM *param, FTSTRING *pbuffer, MYSQL_FTPARSER_BOOLEAN_INFO* instinfo){
-  DBUG_ENTER("snowball_add_word");
-  
   size_t tlen = ftstring_length(pbuffer);
   if(tlen==0){
-    DBUG_RETURN(0);
+    return 0;
   }
   char* thead = ftstring_head(pbuffer);
   
@@ -224,25 +222,25 @@ static int snowball_add_word(MYSQL_FTPARSER_PARAM *param, FTSTRING *pbuffer, MYS
   
   if(!sym){
     // stemming failed.
-    DBUG_RETURN(0);
+    return 0;
   }
   
   if(strcmp(state->engine_charset->csname, param->cs->csname) != 0){
     tlen = str_convert(state->engine_charset, (char*)sym, (size_t)sym_len, param->cs, NULL, 0, NULL);
     thead = ftppc_alloc(state, tlen);
     if(!thead){
-      DBUG_RETURN(FTPPC_MEMORY_ERROR);
+      return FTPPC_MEMORY_ERROR;
     }
     str_convert(state->engine_charset, (char*)sym, (size_t)sym_len, param->cs, thead, tlen, NULL);
   }else{
     tlen = (size_t)sym_len;
     thead = ftppc_alloc(state, tlen);
     if(!thead){
-      DBUG_RETURN(FTPPC_MEMORY_ERROR);
+      return FTPPC_MEMORY_ERROR;
     }
     memcpy(thead, (char*)sym, tlen);
   }
-  DBUG_RETURN(param->mysql_parse(param, thead, tlen));
+  return param->mysql_parse(param, thead, tlen);
 }
 
 static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
@@ -291,7 +289,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
         fflush(stderr);
         
         if(feed_req_free){ my_free(feed); }
-        DBUG_RETURN(FTPPC_NORMALIZATION_ERROR);
+        return FTPPC_NORMALIZATION_ERROR;
       }else if(nm_used > nm_length){
         nm_length = nm_used + 8;
         char *tmp = my_realloc(nm, nm_length, MYF(MY_WME));
@@ -300,7 +298,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
         }else{
           if(feed_req_free){ my_free(feed); }
           my_free(nm);
-          DBUG_RETURN(FTPPC_MEMORY_ERROR);
+          return FTPPC_MEMORY_ERROR;
         }
         nm_used = uni_normalize(feed, feed_length, nm, nm_length, mode, options);
         if(nm_used == 0){
@@ -309,7 +307,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
           
           if(feed_req_free){ my_free(feed); }
           my_free(nm);
-          DBUG_RETURN(FTPPC_NORMALIZATION_ERROR);
+          return FTPPC_NORMALIZATION_ERROR;
         }
       }
       if(feed_req_free){ my_free(feed); }
@@ -371,7 +369,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
     size_t tmp_len = str_convert(cs, feed, feed_length, state->engine_charset, NULL, 0, NULL);
     char* tmp = my_malloc(tmp_len, MYF(MY_WME));
     if(!tmp){
-      DBUG_RETURN(FTPPC_MEMORY_ERROR);
+      return FTPPC_MEMORY_ERROR;
     }
     str_convert(cs, feed, feed_length, state->engine_charset, tmp, tmp_len, NULL);
     if(feed_req_free){ my_free(feed); }
@@ -389,7 +387,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
     MYSQL_FTPARSER_BOOLEAN_INFO instinfo ={ FT_TOKEN_WORD, 0, 0, 0, 0, ' ', 0 };
     MYSQL_FTPARSER_BOOLEAN_INFO *info_may = (MYSQL_FTPARSER_BOOLEAN_INFO*)my_malloc(sizeof(MYSQL_FTPARSER_BOOLEAN_INFO), MYF(MY_WME));
     if(!info_may){
-      DBUG_RETURN(FTPPC_MEMORY_ERROR);
+      return FTPPC_MEMORY_ERROR;
     }
     *info_may = instinfo;
     LIST *infos = NULL;
@@ -429,7 +427,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
         if(!tmp){
           list_free(infos, 1);
           ftstring_destroy(pbuffer);
-          DBUG_RETURN(FTPPC_MEMORY_ERROR);
+          return FTPPC_MEMORY_ERROR;
         }
         *tmp = instinfo;
         list_push(infos, tmp);
@@ -450,7 +448,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
         if(tmp){ my_free(tmp); }
         list_pop(infos);
         if(!infos){
-          DBUG_RETURN(FTPPC_SYNTAX_ERROR);
+          return FTPPC_SYNTAX_ERROR;
         } // must not reach the base info_may level.
         instinfo = *((MYSQL_FTPARSER_BOOLEAN_INFO*)infos->data);
       }
@@ -510,7 +508,7 @@ static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
   }
   ftstring_destroy(pbuffer);
   if(feed_req_free){ my_free(feed); }
-  DBUG_RETURN(0);
+  return 0;
 }
 
 int snowball_algorithm_check(MYSQL_THD thd, struct st_mysql_sys_var *var, void *save, struct st_mysql_value *value){
