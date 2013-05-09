@@ -245,8 +245,6 @@ static int snowball_add_word(MYSQL_FTPARSER_PARAM *param, FTSTRING *pbuffer, MYS
 
 static int snowball_parser_parse(MYSQL_FTPARSER_PARAM *param)
 {
-  DBUG_ENTER("snowball_parser_parse");
-  
   char* feed = param->doc;
   size_t feed_length = (size_t)param->length;
   int feed_req_free = 0;
